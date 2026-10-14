@@ -1,0 +1,6 @@
+{
+  "map_file": "../assets/maps/training_map.txt",
+  "game_config": "defaults.json",
+  "turn_ms": 240,
+  "power_turns": 50
+}

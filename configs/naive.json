@@ -1,0 +1,4 @@
+{
+  "map_file": "../assets/maps/naive_map.txt",
+  "game_config": "defaults.json"
+}

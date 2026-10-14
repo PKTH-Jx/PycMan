@@ -1,0 +1,6 @@
+{
+  "tool": "built-in imagegen",
+  "reference": "ghost.png",
+  "ghost_blue": "Edit target: provided coral ghost game sprite. Create its frightened BLUE state for a Pac-Man-style game. Preserve exact square canvas, transparent background, silhouette, body dimensions, alignment and chunky pixel art scale. Change body to vivid royal blue, replace large eyeballs with two small pale cream square eyes without pupils, add a pale cream simple zigzag worried mouth below them. Keep sprite readable at 40x40. No text, no additional objects, no background, preserve alpha transparency. Keep restrained two-tone shading.",
+  "ghost_white": "Edit target: provided coral ghost game sprite. Create its frightened WHITE warning-flash state for a Pac-Man-style game. Preserve exact square canvas, transparent background, silhouette, body dimensions, alignment and chunky pixel art scale. Change body to ivory WHITE with very subtle light gray shading, replace large eyeballs with two small coral-red square eyes without pupils, add a coral-red simple zigzag worried mouth below them. Keep sprite readable at 40x40. No text, no additional objects, no background, preserve alpha transparency. This is one single white ghost sprite."
+}

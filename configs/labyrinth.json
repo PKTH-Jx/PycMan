@@ -1,0 +1,7 @@
+{
+  "map_file": "../assets/maps/labyrinth_map.txt",
+  "game_config": "defaults.json",
+  "turn_ms": 150,
+  "power_turns": 30,
+  "flash_turns": 10
+}

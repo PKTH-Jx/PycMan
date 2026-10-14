@@ -1,0 +1,5 @@
+{
+  "tool": "built-in imagegen",
+  "player": "Use case: stylized-concept. Asset type: single game character sprite for a pygame Pacman maze game. Draw one charming golden yellow circular chomper, open wedge mouth facing RIGHT, one small dark eye above the mouth, bold clean pixel-art silhouette with restrained two-tone shading and a little warm highlight. Orthographic flat 2D arcade sprite, no perspective. Centered single character occupying 80 percent of a square canvas, fully transparent background, no floor, no shadow outside body, no text, no border. Crisp readable at 40x40 pixels.",
+  "ghost": "Use case: stylized-concept. Asset type: single enemy sprite for a pygame Pacman maze game. Draw one charming coral-red arcade ghost, domed head, scalloped three-lobed bottom, two large white eyes with dark navy pupils looking forward. Bold clean pixel-art silhouette with restrained two-tone shading and a little warm highlight. Orthographic flat 2D arcade sprite, no perspective. Centered single character occupying 80 percent of square canvas, fully transparent background, no floor, no shadow outside body, no text, no border. Crisp readable at 40x40 pixels."
+}

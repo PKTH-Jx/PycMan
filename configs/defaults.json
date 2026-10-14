@@ -1,0 +1,9 @@
+{
+  "turn_ms": 180,
+  "get_point": 10,
+  "beat_ghost": 50,
+  "get_power": 50,
+  "power_turns": 40,
+  "flash_turns": 12,
+  "flash_interval": 2
+}
