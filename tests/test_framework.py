@@ -203,6 +203,115 @@ class FrameworkTest(unittest.TestCase):
         self.assertIn('S1: 0/14 points', output.getvalue())
         self.assertIn('cumulative check failed', output.getvalue())
 
+    def test_advanced_events_use_injected_game_state(self):
+        path = self.map('#####\n#c.g#\n#####\n')
+        seen = []
+
+        def install(game, config):
+            self.assertEqual(config, {'marker': 3})
+            game.on('turn_start', lambda game, event: seen.append('start'))
+            game.on('can_walk', lambda game, event: event.update(allowed=False)
+                    if (event['x'], event['y']) == (2, 1) else None)
+            game.on('turn_end', lambda game, event: seen.append('end'))
+
+        extension = ModuleType('fake_advanced')
+        extension.install = install
+        with patch('game.import_module', return_value=extension):
+            game = Game.for_advanced(('A1',), path=path,
+                                     feature_config={'A1': {'marker': 3}},
+                                     implementation=framework_stub())
+        self.assertFalse(game.env.can_walk(2, 1))
+        game.step((0, 0))
+        self.assertEqual(seen, ['start', 'end'])
+
+    def test_advanced_gui_renders_registered_visuals(self):
+        import pygame
+
+        self.addCleanup(pygame.quit)
+        path = self.map('#######\n#c...g#\n#######\n')
+        extension = ModuleType('fake_visuals')
+
+        def install(game, config):
+            game.on('visuals', lambda game, event: event['tiles'].extend((
+                {'kind': 'rune', 'x': 2, 'y': 1},
+                {'kind': 'key', 'x': 3, 'y': 1, 'color': 'red'},
+                {'kind': 'door', 'x': 4, 'y': 1, 'color': 'red', 'open': False},
+                {'kind': 'gate', 'x': 5, 'y': 1, 'open': True},
+            )))
+
+        extension.install = install
+        with patch('game.import_module', return_value=extension):
+            gui = GUI.for_advanced(('A1',), path=path,
+                                   implementation=framework_stub())
+        gui.draw()
+
+    def test_advanced_gate_prevents_scoring_when_basic_game_fails(self):
+        from tests import __main__ as runner
+
+        framework = unittest.TestResult()
+        framework.testsRun = unittest.defaultTestLoader.loadTestsFromTestCase(
+            FrameworkTest).countTestCases()
+        basic = unittest.TestResult()
+        with (patch.object(runner, 'run_suite', side_effect=[framework, basic]),
+              patch.object(runner, 'advanced_suite',
+                           side_effect=AssertionError('advanced suite ran')),
+              patch('sys.stdout', new_callable=io.StringIO) as output):
+            self.assertEqual(runner.main(['A1']), 2)
+        self.assertIn('Advanced tests were not run', output.getvalue())
+
+    def test_advanced_score_requires_scenario_and_integration(self):
+        from tests import __main__ as runner
+        from tests import test_basic
+
+        one_test = unittest.TestSuite([unittest.FunctionTestCase(lambda: None)])
+        framework = unittest.TestResult()
+        framework.testsRun = unittest.defaultTestLoader.loadTestsFromTestCase(
+            FrameworkTest).countTestCases()
+        basic = unittest.TestResult()
+        basic.testsRun = unittest.defaultTestLoader.loadTestsFromModule(
+            test_basic).countTestCases()
+        scenario = unittest.TestResult()
+        scenario.testsRun = 1
+        integrated = unittest.TestResult()
+        integrated.testsRun = 1
+        integrated.failures.append((None, 'failed game check'))
+        with (patch.object(runner, 'run_suite', side_effect=[
+                  framework, basic, scenario, integrated]),
+              patch.object(runner, 'advanced_suite', return_value=one_test),
+              patch.object(runner, 'advanced_integration_suite',
+                           return_value=one_test),
+              patch('sys.stdout', new_callable=io.StringIO) as output):
+            self.assertEqual(runner.main(['A1']), 1)
+        self.assertIn('A1: 0/15 points', output.getvalue())
+
+    def test_selected_combination_must_pass_for_both_scores(self):
+        from tests import __main__ as runner
+        from tests import test_basic
+
+        one_test = unittest.TestSuite([unittest.FunctionTestCase(lambda: None)])
+        framework = unittest.TestResult()
+        framework.testsRun = unittest.defaultTestLoader.loadTestsFromTestCase(
+            FrameworkTest).countTestCases()
+        basic = unittest.TestResult()
+        basic.testsRun = unittest.defaultTestLoader.loadTestsFromModule(
+            test_basic).countTestCases()
+        successes = [unittest.TestResult() for _ in range(4)]
+        for result in successes:
+            result.testsRun = 1
+        failed_pair = unittest.TestResult()
+        failed_pair.testsRun = 1
+        failed_pair.failures.append((None, 'combination failed'))
+        with (patch.object(runner, 'run_suite', side_effect=[
+                  framework, basic, *successes, failed_pair]),
+              patch.object(runner, 'advanced_suite', return_value=one_test),
+              patch.object(runner, 'advanced_integration_suite',
+                           return_value=one_test),
+              patch.object(runner, 'combination_suite', return_value=one_test),
+              patch('sys.stdout', new_callable=io.StringIO) as output):
+            self.assertEqual(runner.main(['A2', 'C2']), 1)
+        self.assertIn('A2: 0/15 points', output.getvalue())
+        self.assertIn('C2: 0/15 points', output.getvalue())
+
 
 if __name__ == '__main__':
     unittest.main()

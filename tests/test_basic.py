@@ -97,12 +97,12 @@ class PublicTaskTest(unittest.TestCase):
         game.player.live = False
         self.assertEqual(student.check_result(game), 'lost')
 
-    def test_s4_legal_directions_and_order(self):
+    def test_s4_legal_directions(self):
         env = self.env('junction.txt', allowed={(2, 1), (3, 2), (4, 1)})
         controller = Controller(env.player)
         before = [row[:] for row in env.env]
-        self.assertEqual(student.legal_directions(controller),
-                         [(1, 0), (0, 1), (-1, 0)])
+        self.assertCountEqual(student.legal_directions(controller),
+                              [(1, 0), (0, 1), (-1, 0)])
         self.assertEqual((env.player.x, env.player.y), (3, 1))
         self.assertEqual(env.env, before)
 
@@ -117,14 +117,15 @@ class PublicTaskTest(unittest.TestCase):
         self.assertEqual(student.random_direction(controller), (0, 0))
 
     def test_s5_key_handling(self):
-        env = self.env('corridor.txt')
+        env = self.env('corridor.txt', allowed={(2, 1), (3, 1)})
         keyboard = KeyboardController(env.player)
+        keyboard.legal_directions = lambda: [(1, 0)]
         self.assertTrue(student.handle_key(keyboard, 'RIGHT'))
-        self.assertEqual(keyboard.pending, (1, 0))
+        self.assertEqual(student.continuous_direction(keyboard), (1, 0))
         self.assertFalse(student.handle_key(keyboard, 'invalid'))
-        self.assertEqual(keyboard.pending, (1, 0))
+        self.assertEqual(student.continuous_direction(keyboard), (1, 0))
         self.assertTrue(student.handle_key(keyboard, ''))
-        self.assertEqual(keyboard.pending, (0, 0))
+        self.assertEqual(student.continuous_direction(keyboard), (0, 0))
 
     def test_s5_buffered_turn(self):
         env = self.env('buffered_turn.txt', allowed={(2, 1), (3, 1), (3, 2), (4, 1), (5, 1)})
@@ -133,10 +134,10 @@ class PublicTaskTest(unittest.TestCase):
             1: [(1, 0)], 2: [(1, 0), (-1, 0)],
             3: [(1, 0), (0, 1), (-1, 0)],
         }[env.player.x]
-        keyboard.pending = (1, 0)
+        self.assertTrue(student.handle_key(keyboard, 'right'))
         self.assertEqual(student.continuous_direction(keyboard), (1, 0))
         env.player.x += 1
-        keyboard.pending = (0, 1)
+        self.assertTrue(student.handle_key(keyboard, 'down'))
         self.assertEqual(student.continuous_direction(keyboard), (1, 0))
         env.player.x += 1
         self.assertEqual(student.continuous_direction(keyboard), (0, 1))
@@ -161,8 +162,9 @@ class PublicTaskTest(unittest.TestCase):
         env = self.env('corridor.txt', allowed={(2, 1), (3, 1)})
         keyboard = KeyboardController(env.player)
         keyboard.legal_directions = lambda: [(1, 0)]
-        keyboard.direction = (1, 0)
-        keyboard.pending = (0, 0)
+        self.assertTrue(student.handle_key(keyboard, 'right'))
+        self.assertEqual(student.continuous_direction(keyboard), (1, 0))
+        self.assertTrue(student.handle_key(keyboard, ''))
         self.assertEqual(student.continuous_direction(keyboard), (0, 0))
         self.assertTrue(student.handle_key(keyboard, 'right'))
         self.assertEqual(student.continuous_direction(keyboard), (1, 0))

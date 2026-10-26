@@ -12,13 +12,16 @@ GET_POWER = DEFAULT_SETTINGS.get_power
 POWER_TURNS = DEFAULT_SETTINGS.power_turns
 
 class Env:
-    def __init__(self, path: str | Path, config: GameConfig = DEFAULT_SETTINGS,
+    def __init__(self, path: str | Path | list[str], config: GameConfig = DEFAULT_SETTINGS,
                  *, rules: GameRules | None = None) -> None:
         self.config = config
         self.rules = rules
-        assert os.path.exists(path=path)
-        with open(file=path, mode='r', encoding='utf-8') as f:
-            _env: list[str] = f.readlines()
+        if isinstance(path, list):
+            _env = path
+        else:
+            assert os.path.exists(path=path)
+            with open(file=path, mode='r', encoding='utf-8') as f:
+                _env = f.readlines()
         _env = [_row.rstrip('\r\n') for _row in _env]
         if not _env or not _env[0]:
             raise ValueError('Map must not be empty')
@@ -62,7 +65,11 @@ class Env:
 
     def can_walk(self, x: int, y: int) -> bool:
         if self.rules is not None and self.rules.can_walk is not None:
-            return self.rules.can_walk(self, x, y)
+            allowed = self.rules.can_walk(self, x, y)
+            game = getattr(self, 'game', None)
+            if game is not None:
+                allowed = game.emit('can_walk', x=x, y=y, allowed=allowed)['allowed']
+            return allowed
         raise RuntimeError('No can_walk rule is configured')
 
     def update_element(self, x: int, y: int, _type: int) -> None:

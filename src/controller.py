@@ -9,6 +9,8 @@ WAIT = (0, 0)
 
 
 class Controller:
+    """Choose actions; task implementations may add their own strategy fields."""
+
     def __init__(self, agent: Agent) -> None:
         self.agent = agent
 
@@ -26,8 +28,27 @@ class Controller:
             return rules.legal_directions(self)
         raise RuntimeError('No legal_directions rule is configured')
 
+    def step_toward(self, target: tuple[int, int]) -> tuple[int, int]:
+        """Simple local movement for B1; this does not find routes around walls."""
+        x, y = self.agent.x, self.agent.y
+        tx, ty = target
+        candidates = []
+        if tx != x:
+            candidates.append((1 if tx > x else -1, 0))
+        if ty != y:
+            candidates.append((0, 1 if ty > y else -1))
+        legal = self.legal_directions()
+        return next((direction for direction in candidates if direction in legal), WAIT)
+
+    def basic_chase_direction(self) -> tuple[int, int]:
+        """Baseline pursuit for B1 when B2 is not selected."""
+        player = self.agent.env.player
+        return self.step_toward((player.x, player.y))
+
 
 class KeyboardController(Controller):
+    """Keyboard state may be extended without changing the public methods."""
+
     KEYS = {
         'left': (-1, 0), 'a': (-1, 0),
         'right': (1, 0), 'd': (1, 0),

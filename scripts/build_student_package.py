@@ -10,7 +10,7 @@ OUTPUT = ROOT / 'dist/PycMan-student.zip'
 
 def package_files() -> dict[str, Path]:
     files = {
-        'README.md': ROOT / 'docs/student-assignment.md',
+        'README.md': ROOT / 'student-assignment.md',
         'AGENTS.md': ROOT / 'AGENTS.md',
         'requirements.txt': ROOT / 'requirements.txt',
     }
@@ -21,16 +21,21 @@ def package_files() -> dict[str, Path]:
     for name in source_names:
         path = ROOT / 'src' / name
         files[str(path.relative_to(ROOT))] = path
-    task_names = ('src/tasks/__init__.py', 'src/tasks/basic/__init__.py') + tuple(
-        f'src/tasks/basic/s{number}.py' for number in range(1, 6))
+    task_names = ('src/tasks/__init__.py', 'src/tasks/basic/__init__.py',
+                  'src/tasks/advanced/__init__.py') + tuple(
+        f'src/tasks/basic/s{number}.py' for number in range(1, 6)) + tuple(
+        f'src/tasks/advanced/{category}{number}.py'
+        for category in 'abc' for number in (1, 2))
     for name in task_names:
         path = ROOT / name
         files[str(path.relative_to(ROOT))] = path
     for pattern in ('configs/*.json', 'assets/maps/**/*.txt',
+                    'assets/scenarios/**/*.json',
                     'assets/sprites/*.png'):
         for path in ROOT.glob(pattern):
             files[str(path.relative_to(ROOT))] = path
-    for name in ('__init__.py', '__main__.py', 'test_basic.py', 'test_framework.py'):
+    for name in ('__init__.py', '__main__.py', 'test_basic.py',
+                 'test_framework.py', 'test_advanced.py', 'scenarios.py'):
         files[f'tests/{name}'] = ROOT / 'tests' / name
     return files
 
