@@ -1,12 +1,14 @@
 """Pygame handles input and drawing; Game owns the game rules."""
 from pathlib import Path
+from types import ModuleType
 from typing import Callable
 
 import pygame
 
-from game import Game
+from game import Game, stage_setup
 from config import DEFAULT_SETTINGS, PROJECT_ROOT, TURN_MS, GameConfig, load_config
 from controller import Controller, KeyboardController, RandomController
+from rules import GameRules
 from utils import Agent, WALL, POINT, POWER
 
 ARCADE_MAP = str(DEFAULT_SETTINGS.map_file)
@@ -22,15 +24,26 @@ FLASH_INTERVAL = DEFAULT_SETTINGS.flash_interval
 
 
 class GUI:
+    @classmethod
+    def for_stage(cls, stage: str, *, path: str | Path | None = None,
+                  config: GameConfig | None = None,
+                  implementation: ModuleType | None = None) -> 'GUI':
+        selected_map, settings, rules, player_controller, ghost_controller = stage_setup(
+            stage, path=path, config=config, implementation=implementation)
+        return cls(selected_map, player_controller, ghost_controller,
+                   config=settings, rules=rules)
+
     def __init__(self, path: str | Path | None = None,
                  player_controller: Callable[[Agent], Controller] = KeyboardController,
                  ghost_controller: Callable[[Agent], Controller] = RandomController,
-                 *, config: GameConfig | None = None) -> None:
+                 *, config: GameConfig | None = None,
+                 rules: GameRules | None = None) -> None:
         pygame.init()
         self.config = config if config is not None else load_config()
         self.path = path
         self.player_controller_factory = player_controller
         self.ghost_controller_factory = ghost_controller
+        self.rules = rules
         self.reset()
         self.width = max(660, self.game.env.cols * TILE + 2 * MARGIN)
         self.height = HEADER + self.game.env.rows * TILE + 100
@@ -59,7 +72,7 @@ class GUI:
 
     def reset(self) -> None:
         self.game = Game(self.path, self.player_controller_factory, self.ghost_controller_factory,
-                         config=self.config)
+                         config=self.config, rules=self.rules)
         self.player_controller = self.game.controllers[self.game.player]
         self.facing = (1, 0)
         self.started = not isinstance(self.player_controller, KeyboardController)

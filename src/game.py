@@ -1,22 +1,55 @@
 from typing import Callable
 from pathlib import Path
+from types import ModuleType
 
-from config import GameConfig, TERMINAL_CONFIG, TURN_MS, load_config
+from config import GameConfig, PROJECT_ROOT, TERMINAL_CONFIG, load_config
 
-from controller import Controller, KeyboardController, RandomController, DIRECTIONS, WAIT
-from utils import Agent, Env, POINT, POWER, Player
+from controller import (Controller, ImmediateKeyboard, KeyboardController,
+                        RandomController, WaitingGhost, DIRECTIONS, WAIT)
+from rules import GameRules, STAGES, stage_rules
+from utils import Agent, Env, Player
 
 
 DEFAULT_MAP = str(load_config(TERMINAL_CONFIG).map_file)
+STAGE_MAPS = {
+    'S1': PROJECT_ROOT / 'assets/maps/training_map.txt',
+    'S2': PROJECT_ROOT / 'assets/maps/training_map.txt',
+    'S3': PROJECT_ROOT / 'assets/maps/basic/s3_collision.txt',
+    'S4': PROJECT_ROOT / 'assets/maps/training_map.txt',
+    'S5': PROJECT_ROOT / 'assets/maps/crossroads_map.txt',
+}
+
+
+def stage_setup(stage: str, *, path: str | Path | None = None,
+                config: GameConfig | None = None,
+                implementation: ModuleType | None = None) -> tuple[
+                    str | Path, GameConfig, GameRules,
+                    Callable[[Agent], Controller], Callable[[Agent], Controller]]:
+    """Select stage map, rules, and simple behavior for unfinished stages."""
+    stage = stage.upper()
+    if stage not in STAGES:
+        raise ValueError(f'Unknown stage: {stage}')
+    settings = config if config is not None else load_config()
+    selected_map = path if path is not None else (
+        settings.map_file if config is not None else STAGE_MAPS[stage]
+    )
+    rules = stage_rules(stage, implementation)
+    level = int(stage[1:])
+    player_controller = KeyboardController if level >= 5 else ImmediateKeyboard
+    ghost_controller = RandomController if level >= 4 else WaitingGhost
+    return selected_map, settings, rules, player_controller, ghost_controller
 
 
 class Game:
     def __init__(self, path: str | Path | None = None,
                  player_controller: Callable[[Agent], Controller] = KeyboardController,
                  ghost_controller: Callable[[Agent], Controller] = RandomController,
-                 *, config: GameConfig | None = None) -> None:
+                 *, config: GameConfig | None = None,
+                 rules: GameRules | None = None) -> None:
         self.config = config if config is not None else load_config(TERMINAL_CONFIG)
-        self.env: Env = Env(path if path is not None else self.config.map_file, self.config)
+        self.rules = rules if rules is not None else stage_rules('S1')
+        self.env: Env = Env(path if path is not None else self.config.map_file,
+                            self.config, rules=self.rules)
         assert self.env.player is not None
         self.player: Player  = self.env.player
         # Factories create a separate controller (and strategy memory) per agent.
@@ -28,14 +61,24 @@ class Game:
         self.status = 'running'  # running, won, lost, quit
         self.check_result()
 
+    @classmethod
+    def for_stage(cls, stage: str, *, path: str | Path | None = None,
+                  config: GameConfig | None = None,
+                  implementation: ModuleType | None = None) -> 'Game':
+        selected_map, settings, rules, player_controller, ghost_controller = stage_setup(
+            stage, path=path, config=config, implementation=implementation)
+        return cls(selected_map, player_controller, ghost_controller,
+                   config=settings, rules=rules)
+
     def check_result(self) -> str:
         """Death takes priority over eating the last point in the same move."""
         if self.status != 'running':
             return self.status
-        if not self.player.live:
-            self.status = 'lost'
-        elif not any(POINT in row or POWER in row for row in self.env.env):
-            self.status = 'won'
+        if self.rules is not None and self.rules.check_result is not None:
+            result = self.rules.check_result(self)
+            if result not in ('running', 'won', 'lost'):
+                raise ValueError(f'Invalid game result: {result!r}')
+            self.status = result
         return self.status
 
     def step(self, direction: tuple[int, int] | None = None) -> str:
@@ -55,8 +98,10 @@ class Game:
             raise ValueError('Invalid direction')
         # The previous turn has elapsed. A new power pellet refreshes this
         # below, before collisions, so collecting it grants the full duration.
-        self.player.state = max(0, self.player.state - 1)
-        self.player.move(direction)
+        if self.rules is not None and self.rules.advance_power is not None:
+            self.rules.advance_power(self.player)
+        if self.player.move(direction):
+            self.player.collect_item()
         self.env.resolve_collisions()
         if self.check_result() != 'running':
             return self.status
@@ -112,4 +157,4 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run the terminal game')
     parser.add_argument('--config', default=TERMINAL_CONFIG, help='Path to a map JSON profile')
     args = parser.parse_args()
-    Game(config=load_config(args.config)).run()
+    Game(config=load_config(args.config), rules=stage_rules('S5')).run()
